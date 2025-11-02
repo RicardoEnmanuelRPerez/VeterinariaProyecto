@@ -1,0 +1,6 @@
+@VeterinariaProyecto_HostAddress = http://localhost:5064
+
+GET {{VeterinariaProyecto_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
