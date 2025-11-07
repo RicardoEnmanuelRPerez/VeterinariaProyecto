@@ -1,85 +1,66 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Veterinaria_Genesis_DB.Data;
-using Veterinaria_Genesis_DB.Models;
+﻿using Microsoft.AspNetCore.Mvc;
+using VeterinariaProyecto.Models;
+using VeterinariaProyecto.DAO;
 
-namespace VeterinariaGenesis.Controllers
+namespace VeterinariaProyecto.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class CitasController : ControllerBase
     {
-        private readonly VeterinariaContext _context;
+        private readonly CitaDAO _citaDAO;
 
-        public CitasController(VeterinariaContext context)
+        public CitasController()
         {
-            _context = context;
+            _citaDAO = new CitaDAO();
         }
 
         // GET: api/Citas
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Cita>>> GetCita()
         {
-            return await _context.Cita.ToListAsync();
+            var citas = await _citaDAO.ObtenerTodosAsync();
+            return Ok(citas);
         }
 
         // GET: api/Citas/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Cita>> GetCita(int id)
         {
-            var cita = await _context.Cita.FindAsync(id);
+            var cita = await _citaDAO.ObtenerPorIdAsync(id);
 
             if (cita == null)
             {
                 return NotFound();
             }
 
-            return cita;
+            return Ok(cita);
         }
 
         // PUT: api/Citas/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutCita(int id, Cita cita)
         {
             if (id != cita.IdCita)
             {
-                return BadRequest();
+                return BadRequest("El ID de la URL no coincide con el ID del objeto");
             }
 
-            _context.Entry(cita).State = EntityState.Modified;
-
-            try
+            var resultado = await _citaDAO.ActualizarAsync(cita);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!CitaExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound("No se pudo actualizar o no se encontró la cita");
             }
 
             return NoContent();
         }
 
         // POST: api/Citas
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Cita>> PostCita(Cita cita)
         {
-            _context.Cita.Add(cita);
-            await _context.SaveChangesAsync();
+            int nuevoId = await _citaDAO.InsertarAsync(cita);
+            cita.IdCita = nuevoId;
 
             return CreatedAtAction("GetCita", new { id = cita.IdCita }, cita);
         }
@@ -88,21 +69,13 @@ namespace VeterinariaGenesis.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCita(int id)
         {
-            var cita = await _context.Cita.FindAsync(id);
-            if (cita == null)
+            var resultado = await _citaDAO.EliminarAsync(id);
+            if (!resultado)
             {
-                return NotFound();
+                return NotFound("No se pudo eliminar o no se encontró la cita");
             }
 
-            _context.Cita.Remove(cita);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool CitaExists(int id)
-        {
-            return _context.Cita.Any(e => e.IdCita == id);
         }
     }
 }

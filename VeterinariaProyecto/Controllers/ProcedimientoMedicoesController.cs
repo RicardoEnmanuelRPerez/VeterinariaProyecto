@@ -1,108 +1,55 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Veterinaria_Genesis_DB.Data;
-using Veterinaria_Genesis_DB.Models;
+using VeterinariaProyecto.Models;
+using VeterinariaProyecto.DAO;
 
-namespace VeterinariaGenesis.Controllers
+namespace VeterinariaProyecto.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class ProcedimientoMedicoesController : ControllerBase
     {
-        private readonly VeterinariaContext _context;
+        private readonly ProcedimientoMedicoDAO _procedimientoMedicoDAO;
 
-        public ProcedimientoMedicoesController(VeterinariaContext context)
+        public ProcedimientoMedicoesController()
         {
-            _context = context;
+            _procedimientoMedicoDAO = new ProcedimientoMedicoDAO();
         }
 
         // GET: api/ProcedimientoMedicoes
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ProcedimientoMedico>>> GetProcedimientosMedicos()
+        public async Task<ActionResult<IEnumerable<ProcedimientoMedico>>> GetProcedimientoMedicos()
         {
-            return await _context.ProcedimientosMedicos
-                .Include(p => p.IdHistoriaNavigation)
-                    .ThenInclude(h => h.IdMascotaNavigation)
-                .Include(p => p.IdVeterinarioNavigation)
-                .ToListAsync();
+            var procedimientos = await _procedimientoMedicoDAO.ObtenerTodosAsync();
+            return Ok(procedimientos);
         }
 
         // GET: api/ProcedimientoMedicoes/5
         [HttpGet("{id}")]
         public async Task<ActionResult<ProcedimientoMedico>> GetProcedimientoMedico(int id)
         {
-            var procedimientoMedico = await _context.ProcedimientosMedicos
-                .Include(p => p.IdHistoriaNavigation)
-                    .ThenInclude(h => h.IdMascotaNavigation)
-                .Include(p => p.IdVeterinarioNavigation)
-                .FirstOrDefaultAsync(p => p.IdProcedimiento == id);
+            var procedimiento = await _procedimientoMedicoDAO.ObtenerPorIdAsync(id);
 
-            if (procedimientoMedico == null)
+            if (procedimiento == null)
             {
                 return NotFound();
             }
 
-            return procedimientoMedico;
-        }
-
-        // GET: api/ProcedimientoMedicoes/ByMascota/5
-        [HttpGet("ByMascota/{idMascota}")]
-        public async Task<ActionResult<IEnumerable<ProcedimientoMedico>>> GetProcedimientosByMascota(int idMascota)
-        {
-            var procedimientos = await _context.ProcedimientosMedicos
-                .Include(p => p.IdHistoriaNavigation)
-                    .ThenInclude(h => h.IdMascotaNavigation)
-                .Include(p => p.IdVeterinarioNavigation)
-                .Where(p => p.IdHistoriaNavigation.IdMascota == idMascota)
-                .ToListAsync();
-
-            return procedimientos;
-        }
-
-        // GET: api/ProcedimientoMedicoes/ByTipo/Hospitalizacion
-        [HttpGet("ByTipo/{tipo}")]
-        public async Task<ActionResult<IEnumerable<ProcedimientoMedico>>> GetProcedimientosByTipo(string tipo)
-        {
-            var procedimientos = await _context.ProcedimientosMedicos
-                .Include(p => p.IdHistoriaNavigation)
-                    .ThenInclude(h => h.IdMascotaNavigation)
-                .Include(p => p.IdVeterinarioNavigation)
-                .Where(p => p.Tipo == tipo)
-                .ToListAsync();
-
-            return procedimientos;
+            return Ok(procedimiento);
         }
 
         // PUT: api/ProcedimientoMedicoes/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutProcedimientoMedico(int id, ProcedimientoMedico procedimientoMedico)
+        public async Task<IActionResult> PutProcedimientoMedico(int id, ProcedimientoMedico procedimiento)
         {
-            if (id != procedimientoMedico.IdProcedimiento)
+            if (id != procedimiento.IdProcedimiento)
             {
-                return BadRequest();
+                return BadRequest("El ID de la URL no coincide con el ID del objeto");
             }
 
-            _context.Entry(procedimientoMedico).State = EntityState.Modified;
-
-            try
+            var resultado = await _procedimientoMedicoDAO.ActualizarAsync(procedimiento);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ProcedimientoMedicoExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound("No se pudo actualizar o no se encontró el procedimiento médico");
             }
 
             return NoContent();
@@ -110,55 +57,25 @@ namespace VeterinariaGenesis.Controllers
 
         // POST: api/ProcedimientoMedicoes
         [HttpPost]
-        public async Task<ActionResult<ProcedimientoMedico>> PostProcedimientoMedico(ProcedimientoMedico procedimientoMedico)
+        public async Task<ActionResult<ProcedimientoMedico>> PostProcedimientoMedico(ProcedimientoMedico procedimiento)
         {
-            _context.ProcedimientosMedicos.Add(procedimientoMedico);
-            await _context.SaveChangesAsync();
+            int nuevoId = await _procedimientoMedicoDAO.InsertarAsync(procedimiento);
+            procedimiento.IdProcedimiento = nuevoId;
 
-            return CreatedAtAction("GetProcedimientoMedico", new { id = procedimientoMedico.IdProcedimiento }, procedimientoMedico);
+            return CreatedAtAction("GetProcedimientoMedico", new { id = procedimiento.IdProcedimiento }, procedimiento);
         }
 
         // DELETE: api/ProcedimientoMedicoes/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProcedimientoMedico(int id)
         {
-            var procedimientoMedico = await _context.ProcedimientosMedicos.FindAsync(id);
-            if (procedimientoMedico == null)
+            var resultado = await _procedimientoMedicoDAO.EliminarAsync(id);
+            if (!resultado)
             {
-                return NotFound();
+                return NotFound("No se pudo eliminar o no se encontró el procedimiento médico");
             }
-
-            _context.ProcedimientosMedicos.Remove(procedimientoMedico);
-            await _context.SaveChangesAsync();
 
             return NoContent();
-        }
-
-        // PUT: api/ProcedimientoMedicoes/5/Estado
-        [HttpPut("{id}/Estado")]
-        public async Task<IActionResult> UpdateEstado(int id, [FromBody] string nuevoEstado)
-        {
-            var procedimiento = await _context.ProcedimientosMedicos.FindAsync(id);
-            if (procedimiento == null)
-            {
-                return NotFound();
-            }
-
-            procedimiento.Estado = nuevoEstado;
-            
-            // Si se completa, establecer fecha fin
-            if (nuevoEstado == "Completado" && procedimiento.FechaFin == null)
-            {
-                procedimiento.FechaFin = DateTime.Now;
-            }
-
-            await _context.SaveChangesAsync();
-            return Ok(procedimiento);
-        }
-
-        private bool ProcedimientoMedicoExists(int id)
-        {
-            return _context.ProcedimientosMedicos.Any(e => e.IdProcedimiento == id);
         }
     }
 }

@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace Veterinaria_Genesis_DB.Models;
+namespace VeterinariaProyecto.Models;
 
 [Table("Usuario")]
 [Index("NombreUsuario", Name = "UQ__Usuario__6B0F5AE0B6A027EA", IsUnique = true)]

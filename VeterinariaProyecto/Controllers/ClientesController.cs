@@ -1,85 +1,66 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Veterinaria_Genesis_DB.Data;
-using Veterinaria_Genesis_DB.Models;
+﻿using Microsoft.AspNetCore.Mvc;
+using VeterinariaProyecto.Models;
+using VeterinariaProyecto.DAO;
 
-namespace VeterinariaGenesis.Controllers
+namespace VeterinariaProyecto.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class ClientesController : ControllerBase
     {
-        private readonly VeterinariaContext _context;
+        private readonly ClienteDAO _clienteDAO;
 
-        public ClientesController(VeterinariaContext context)
+        public ClientesController()
         {
-            _context = context;
+            _clienteDAO = new ClienteDAO();
         }
 
         // GET: api/Clientes
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Cliente>>> GetClientes()
         {
-            return await _context.Clientes.ToListAsync();
+            var clientes = await _clienteDAO.ObtenerTodosAsync();
+            return Ok(clientes);
         }
 
         // GET: api/Clientes/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Cliente>> GetCliente(int id)
         {
-            var cliente = await _context.Clientes.FindAsync(id);
+            var cliente = await _clienteDAO.ObtenerPorIdAsync(id);
 
             if (cliente == null)
             {
                 return NotFound();
             }
 
-            return cliente;
+            return Ok(cliente);
         }
 
         // PUT: api/Clientes/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutCliente(int id, Cliente cliente)
         {
             if (id != cliente.IdCliente)
             {
-                return BadRequest();
+                return BadRequest("El ID de la URL no coincide con el ID del objeto");
             }
 
-            _context.Entry(cliente).State = EntityState.Modified;
-
-            try
+            var resultado = await _clienteDAO.ActualizarAsync(cliente);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ClienteExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound("No se pudo actualizar o no se encontró el cliente");
             }
 
             return NoContent();
         }
 
         // POST: api/Clientes
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Cliente>> PostCliente(Cliente cliente)
         {
-            _context.Clientes.Add(cliente);
-            await _context.SaveChangesAsync();
+            int nuevoId = await _clienteDAO.InsertarAsync(cliente);
+            cliente.IdCliente = nuevoId;
 
             return CreatedAtAction("GetCliente", new { id = cliente.IdCliente }, cliente);
         }
@@ -88,21 +69,13 @@ namespace VeterinariaGenesis.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCliente(int id)
         {
-            var cliente = await _context.Clientes.FindAsync(id);
-            if (cliente == null)
+            var resultado = await _clienteDAO.EliminarAsync(id);
+            if (!resultado)
             {
-                return NotFound();
+                return NotFound("No se pudo eliminar o no se encontró el cliente");
             }
 
-            _context.Clientes.Remove(cliente);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool ClienteExists(int id)
-        {
-            return _context.Clientes.Any(e => e.IdCliente == id);
         }
     }
 }

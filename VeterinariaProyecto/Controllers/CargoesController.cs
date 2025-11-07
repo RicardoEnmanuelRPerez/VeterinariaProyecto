@@ -1,108 +1,83 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿// En Controllers/CargoesController.cs (CÓDIGO NUEVO)
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Veterinaria_Genesis_DB.Data;
-using Veterinaria_Genesis_DB.Models;
+using VeterinariaProyecto.Models;
+using VeterinariaProyecto.DAO; // <-- ¡NUEVO! Importa tu carpeta DAO
 
-namespace VeterinariaGenesis.Controllers
+namespace VeterinariaProyecto.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class CargoesController : ControllerBase
     {
-        private readonly VeterinariaContext _context;
+        private readonly CargoDAO _cargoDAO; // <-- Depende del DAO
 
-        public CargoesController(VeterinariaContext context)
+        public CargoesController() // <-- Constructor simplificado
         {
-            _context = context;
+            _cargoDAO = new CargoDAO(); // <-- Crea el DAO manualmente
         }
 
         // GET: api/Cargoes
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Cargo>>> GetCargos()
+        public async Task<ActionResult<IEnumerable<Cargo>>> GetCargoes()
         {
-            return await _context.Cargos.ToListAsync();
+            var cargos = await _cargoDAO.ObtenerTodosAsync();
+            return Ok(cargos);
         }
 
         // GET: api/Cargoes/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Cargo>> GetCargo(int id)
         {
-            var cargo = await _context.Cargos.FindAsync(id);
+            var cargo = await _cargoDAO.ObtenerPorIdAsync(id);
 
             if (cargo == null)
             {
-                return NotFound();
+                return NotFound(); // Error 404 si no se encuentra
             }
 
-            return cargo;
+            return Ok(cargo);
         }
 
         // PUT: api/Cargoes/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutCargo(int id, Cargo cargo)
         {
             if (id != cargo.IdCargo)
             {
-                return BadRequest();
+                return BadRequest("El ID de la URL no coincide con el ID del objeto");
             }
 
-            _context.Entry(cargo).State = EntityState.Modified;
-
-            try
+            var resultado = await _cargoDAO.ActualizarAsync(cargo);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!CargoExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                // Podríamos verificar si existe primero, pero por ahora esto funciona
+                return NotFound("No se pudo actualizar o no se encontró el cargo");
             }
 
-            return NoContent();
+            return NoContent(); // Éxito 204
         }
 
         // POST: api/Cargoes
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Cargo>> PostCargo(Cargo cargo)
         {
-            _context.Cargos.Add(cargo);
-            await _context.SaveChangesAsync();
+            int nuevoId = await _cargoDAO.InsertarAsync(cargo);
+            cargo.IdCargo = nuevoId;
 
-            return CreatedAtAction("GetCargo", new { id = cargo.IdCargo }, cargo);
+            return CreatedAtAction("GetCargo", new { id = cargo.IdCargo }, cargo); // Éxito 201
         }
 
         // DELETE: api/Cargoes/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCargo(int id)
         {
-            var cargo = await _context.Cargos.FindAsync(id);
-            if (cargo == null)
+            var resultado = await _cargoDAO.EliminarAsync(id);
+            if (!resultado)
             {
-                return NotFound();
+                return NotFound("No se pudo eliminar o no se encontró el cargo");
             }
 
-            _context.Cargos.Remove(cargo);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        private bool CargoExists(int id)
-        {
-            return _context.Cargos.Any(e => e.IdCargo == id);
+            return NoContent(); // Éxito 204
         }
     }
 }

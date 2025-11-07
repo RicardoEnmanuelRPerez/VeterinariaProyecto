@@ -1,122 +1,94 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Veterinaria_Genesis_DB.Data;
-using Veterinaria_Genesis_DB.Models;
+﻿using Microsoft.AspNetCore.Mvc;
+using VeterinariaProyecto.Models;
+using VeterinariaProyecto.DAO;
 
-namespace VeterinariaGenesis.Controllers
+namespace VeterinariaProyecto.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class FacturaProductoesController : ControllerBase
     {
-        private readonly VeterinariaContext _context;
+        private readonly FacturaProductoDAO _facturaProductoDAO;
 
-        public FacturaProductoesController(VeterinariaContext context)
+        public FacturaProductoesController()
         {
-            _context = context;
+            _facturaProductoDAO = new FacturaProductoDAO();
         }
 
         // GET: api/FacturaProductoes
         [HttpGet]
         public async Task<ActionResult<IEnumerable<FacturaProducto>>> GetFacturaProductos()
         {
-            return await _context.FacturaProductos.ToListAsync();
+            var facturaProductos = await _facturaProductoDAO.ObtenerTodosAsync();
+            return Ok(facturaProductos);
         }
 
-        // GET: api/FacturaProductoes/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<FacturaProducto>> GetFacturaProducto(int id)
+        // GET: api/FacturaProductoes/5/3
+        [HttpGet("{idFactura}/{idProducto}")]
+        public async Task<ActionResult<FacturaProducto>> GetFacturaProducto(int idFactura, int idProducto)
         {
-            var facturaProducto = await _context.FacturaProductos.FindAsync(id);
+            var facturaProducto = await _facturaProductoDAO.ObtenerPorIdAsync(idFactura, idProducto);
 
             if (facturaProducto == null)
             {
                 return NotFound();
             }
 
-            return facturaProducto;
+            return Ok(facturaProducto);
         }
 
-        // PUT: api/FacturaProductoes/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutFacturaProducto(int id, FacturaProducto facturaProducto)
+        // GET: api/FacturaProductoes/factura/5
+        [HttpGet("factura/{idFactura}")]
+        public async Task<ActionResult<IEnumerable<FacturaProducto>>> GetFacturaProductosPorFactura(int idFactura)
         {
-            if (id != facturaProducto.IdFactura)
+            var facturaProductos = await _facturaProductoDAO.ObtenerPorFacturaAsync(idFactura);
+            return Ok(facturaProductos);
+        }
+
+        // PUT: api/FacturaProductoes/5/3
+        [HttpPut("{idFactura}/{idProducto}")]
+        public async Task<IActionResult> PutFacturaProducto(int idFactura, int idProducto, FacturaProducto facturaProducto)
+        {
+            if (idFactura != facturaProducto.IdFactura || idProducto != facturaProducto.IdProducto)
             {
-                return BadRequest();
+                return BadRequest("El ID de la URL no coincide con el ID del objeto");
             }
 
-            _context.Entry(facturaProducto).State = EntityState.Modified;
-
-            try
+            var resultado = await _facturaProductoDAO.ActualizarAsync(facturaProducto);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!FacturaProductoExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound("No se pudo actualizar o no se encontró el factura producto");
             }
 
             return NoContent();
         }
 
         // POST: api/FacturaProductoes
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<FacturaProducto>> PostFacturaProducto(FacturaProducto facturaProducto)
         {
-            _context.FacturaProductos.Add(facturaProducto);
-            try
+            var resultado = await _facturaProductoDAO.InsertarAsync(facturaProducto);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                if (FacturaProductoExists(facturaProducto.IdFactura))
-                {
-                    return Conflict();
-                }
-                else
-                {
-                    throw;
-                }
+                return BadRequest("No se pudo insertar el factura producto");
             }
 
-            return CreatedAtAction("GetFacturaProducto", new { id = facturaProducto.IdFactura }, facturaProducto);
+            return CreatedAtAction("GetFacturaProducto", 
+                new { idFactura = facturaProducto.IdFactura, idProducto = facturaProducto.IdProducto }, 
+                facturaProducto);
         }
 
-        // DELETE: api/FacturaProductoes/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteFacturaProducto(int id)
+        // DELETE: api/FacturaProductoes/5/3
+        [HttpDelete("{idFactura}/{idProducto}")]
+        public async Task<IActionResult> DeleteFacturaProducto(int idFactura, int idProducto)
         {
-            var facturaProducto = await _context.FacturaProductos.FindAsync(id);
-            if (facturaProducto == null)
+            var resultado = await _facturaProductoDAO.EliminarAsync(idFactura, idProducto);
+            if (!resultado)
             {
-                return NotFound();
+                return NotFound("No se pudo eliminar o no se encontró el factura producto");
             }
-
-            _context.FacturaProductos.Remove(facturaProducto);
-            await _context.SaveChangesAsync();
 
             return NoContent();
-        }
-
-        private bool FacturaProductoExists(int id)
-        {
-            return _context.FacturaProductos.Any(e => e.IdFactura == id);
         }
     }
 }

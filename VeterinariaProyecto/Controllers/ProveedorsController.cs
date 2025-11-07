@@ -1,85 +1,66 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Veterinaria_Genesis_DB.Data;
-using Veterinaria_Genesis_DB.Models;
+﻿using Microsoft.AspNetCore.Mvc;
+using VeterinariaProyecto.Models;
+using VeterinariaProyecto.DAO;
 
-namespace VeterinariaGenesis.Controllers
+namespace VeterinariaProyecto.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class ProveedorsController : ControllerBase
     {
-        private readonly VeterinariaContext _context;
+        private readonly ProveedorDAO _proveedorDAO;
 
-        public ProveedorsController(VeterinariaContext context)
+        public ProveedorsController()
         {
-            _context = context;
+            _proveedorDAO = new ProveedorDAO();
         }
 
         // GET: api/Proveedors
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Proveedor>>> GetProveedors()
         {
-            return await _context.Proveedors.ToListAsync();
+            var proveedores = await _proveedorDAO.ObtenerTodosAsync();
+            return Ok(proveedores);
         }
 
         // GET: api/Proveedors/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Proveedor>> GetProveedor(int id)
         {
-            var proveedor = await _context.Proveedors.FindAsync(id);
+            var proveedor = await _proveedorDAO.ObtenerPorIdAsync(id);
 
             if (proveedor == null)
             {
                 return NotFound();
             }
 
-            return proveedor;
+            return Ok(proveedor);
         }
 
         // PUT: api/Proveedors/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutProveedor(int id, Proveedor proveedor)
         {
             if (id != proveedor.IdProveedor)
             {
-                return BadRequest();
+                return BadRequest("El ID de la URL no coincide con el ID del objeto");
             }
 
-            _context.Entry(proveedor).State = EntityState.Modified;
-
-            try
+            var resultado = await _proveedorDAO.ActualizarAsync(proveedor);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ProveedorExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound("No se pudo actualizar o no se encontró el proveedor");
             }
 
             return NoContent();
         }
 
         // POST: api/Proveedors
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Proveedor>> PostProveedor(Proveedor proveedor)
         {
-            _context.Proveedors.Add(proveedor);
-            await _context.SaveChangesAsync();
+            int nuevoId = await _proveedorDAO.InsertarAsync(proveedor);
+            proveedor.IdProveedor = nuevoId;
 
             return CreatedAtAction("GetProveedor", new { id = proveedor.IdProveedor }, proveedor);
         }
@@ -88,21 +69,13 @@ namespace VeterinariaGenesis.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProveedor(int id)
         {
-            var proveedor = await _context.Proveedors.FindAsync(id);
-            if (proveedor == null)
+            var resultado = await _proveedorDAO.EliminarAsync(id);
+            if (!resultado)
             {
-                return NotFound();
+                return NotFound("No se pudo eliminar o no se encontró el proveedor");
             }
 
-            _context.Proveedors.Remove(proveedor);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool ProveedorExists(int id)
-        {
-            return _context.Proveedors.Any(e => e.IdProveedor == id);
         }
     }
 }

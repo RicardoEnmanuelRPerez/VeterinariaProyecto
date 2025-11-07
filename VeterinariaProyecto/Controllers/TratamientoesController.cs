@@ -1,85 +1,66 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Veterinaria_Genesis_DB.Data;
-using Veterinaria_Genesis_DB.Models;
+﻿using Microsoft.AspNetCore.Mvc;
+using VeterinariaProyecto.Models;
+using VeterinariaProyecto.DAO;
 
-namespace VeterinariaGenesis.Controllers
+namespace VeterinariaProyecto.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class TratamientoesController : ControllerBase
     {
-        private readonly VeterinariaContext _context;
+        private readonly TratamientoDAO _tratamientoDAO;
 
-        public TratamientoesController(VeterinariaContext context)
+        public TratamientoesController()
         {
-            _context = context;
+            _tratamientoDAO = new TratamientoDAO();
         }
 
         // GET: api/Tratamientoes
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Tratamiento>>> GetTratamientos()
+        public async Task<ActionResult<IEnumerable<Tratamiento>>> GetTratamientoes()
         {
-            return await _context.Tratamientos.ToListAsync();
+            var tratamientos = await _tratamientoDAO.ObtenerTodosAsync();
+            return Ok(tratamientos);
         }
 
         // GET: api/Tratamientoes/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Tratamiento>> GetTratamiento(int id)
         {
-            var tratamiento = await _context.Tratamientos.FindAsync(id);
+            var tratamiento = await _tratamientoDAO.ObtenerPorIdAsync(id);
 
             if (tratamiento == null)
             {
                 return NotFound();
             }
 
-            return tratamiento;
+            return Ok(tratamiento);
         }
 
         // PUT: api/Tratamientoes/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutTratamiento(int id, Tratamiento tratamiento)
         {
             if (id != tratamiento.IdTratamiento)
             {
-                return BadRequest();
+                return BadRequest("El ID de la URL no coincide con el ID del objeto");
             }
 
-            _context.Entry(tratamiento).State = EntityState.Modified;
-
-            try
+            var resultado = await _tratamientoDAO.ActualizarAsync(tratamiento);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!TratamientoExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound("No se pudo actualizar o no se encontró el tratamiento");
             }
 
             return NoContent();
         }
 
         // POST: api/Tratamientoes
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Tratamiento>> PostTratamiento(Tratamiento tratamiento)
         {
-            _context.Tratamientos.Add(tratamiento);
-            await _context.SaveChangesAsync();
+            int nuevoId = await _tratamientoDAO.InsertarAsync(tratamiento);
+            tratamiento.IdTratamiento = nuevoId;
 
             return CreatedAtAction("GetTratamiento", new { id = tratamiento.IdTratamiento }, tratamiento);
         }
@@ -88,21 +69,13 @@ namespace VeterinariaGenesis.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTratamiento(int id)
         {
-            var tratamiento = await _context.Tratamientos.FindAsync(id);
-            if (tratamiento == null)
+            var resultado = await _tratamientoDAO.EliminarAsync(id);
+            if (!resultado)
             {
-                return NotFound();
+                return NotFound("No se pudo eliminar o no se encontró el tratamiento");
             }
 
-            _context.Tratamientos.Remove(tratamiento);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool TratamientoExists(int id)
-        {
-            return _context.Tratamientos.Any(e => e.IdTratamiento == id);
         }
     }
 }

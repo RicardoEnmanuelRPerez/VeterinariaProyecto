@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace Veterinaria_Genesis_DB.Models;
+namespace VeterinariaProyecto.Models;
 
 [Table("Cliente")]
 [Index("Dni", Name = "UQ__Cliente__C0308575D20E1AB0", IsUnique = true)]

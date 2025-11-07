@@ -1,85 +1,66 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Veterinaria_Genesis_DB.Data;
-using Veterinaria_Genesis_DB.Models;
+﻿using Microsoft.AspNetCore.Mvc;
+using VeterinariaProyecto.Models;
+using VeterinariaProyecto.DAO;
 
-namespace VeterinariaGenesis.Controllers
+namespace VeterinariaProyecto.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class FacturasController : ControllerBase
     {
-        private readonly VeterinariaContext _context;
+        private readonly FacturaDAO _facturaDAO;
 
-        public FacturasController(VeterinariaContext context)
+        public FacturasController()
         {
-            _context = context;
+            _facturaDAO = new FacturaDAO();
         }
 
         // GET: api/Facturas
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Factura>>> GetFacturas()
         {
-            return await _context.Facturas.ToListAsync();
+            var facturas = await _facturaDAO.ObtenerTodosAsync();
+            return Ok(facturas);
         }
 
         // GET: api/Facturas/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Factura>> GetFactura(int id)
         {
-            var factura = await _context.Facturas.FindAsync(id);
+            var factura = await _facturaDAO.ObtenerPorIdAsync(id);
 
             if (factura == null)
             {
                 return NotFound();
             }
 
-            return factura;
+            return Ok(factura);
         }
 
         // PUT: api/Facturas/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutFactura(int id, Factura factura)
         {
             if (id != factura.IdFactura)
             {
-                return BadRequest();
+                return BadRequest("El ID de la URL no coincide con el ID del objeto");
             }
 
-            _context.Entry(factura).State = EntityState.Modified;
-
-            try
+            var resultado = await _facturaDAO.ActualizarAsync(factura);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!FacturaExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound("No se pudo actualizar o no se encontró la factura");
             }
 
             return NoContent();
         }
 
         // POST: api/Facturas
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Factura>> PostFactura(Factura factura)
         {
-            _context.Facturas.Add(factura);
-            await _context.SaveChangesAsync();
+            int nuevoId = await _facturaDAO.InsertarAsync(factura);
+            factura.IdFactura = nuevoId;
 
             return CreatedAtAction("GetFactura", new { id = factura.IdFactura }, factura);
         }
@@ -88,21 +69,13 @@ namespace VeterinariaGenesis.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteFactura(int id)
         {
-            var factura = await _context.Facturas.FindAsync(id);
-            if (factura == null)
+            var resultado = await _facturaDAO.EliminarAsync(id);
+            if (!resultado)
             {
-                return NotFound();
+                return NotFound("No se pudo eliminar o no se encontró la factura");
             }
 
-            _context.Facturas.Remove(factura);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool FacturaExists(int id)
-        {
-            return _context.Facturas.Any(e => e.IdFactura == id);
         }
     }
 }

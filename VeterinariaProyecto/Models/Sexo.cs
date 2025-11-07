@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace Veterinaria_Genesis_DB.Models;
+namespace VeterinariaProyecto.Models;
 
 [Table("Sexo")]
 public partial class Sexo

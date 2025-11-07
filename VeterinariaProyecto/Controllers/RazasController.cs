@@ -1,85 +1,66 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Veterinaria_Genesis_DB.Data;
-using Veterinaria_Genesis_DB.Models;
+﻿using Microsoft.AspNetCore.Mvc;
+using VeterinariaProyecto.Models;
+using VeterinariaProyecto.DAO;
 
-namespace VeterinariaGenesis.Controllers
+namespace VeterinariaProyecto.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class RazasController : ControllerBase
     {
-        private readonly VeterinariaContext _context;
+        private readonly RazaDAO _razaDAO;
 
-        public RazasController(VeterinariaContext context)
+        public RazasController()
         {
-            _context = context;
+            _razaDAO = new RazaDAO();
         }
 
         // GET: api/Razas
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Raza>>> GetRazas()
         {
-            return await _context.Razas.ToListAsync();
+            var razas = await _razaDAO.ObtenerTodosAsync();
+            return Ok(razas);
         }
 
         // GET: api/Razas/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Raza>> GetRaza(int id)
         {
-            var raza = await _context.Razas.FindAsync(id);
+            var raza = await _razaDAO.ObtenerPorIdAsync(id);
 
             if (raza == null)
             {
                 return NotFound();
             }
 
-            return raza;
+            return Ok(raza);
         }
 
         // PUT: api/Razas/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutRaza(int id, Raza raza)
         {
             if (id != raza.IdRaza)
             {
-                return BadRequest();
+                return BadRequest("El ID de la URL no coincide con el ID del objeto");
             }
 
-            _context.Entry(raza).State = EntityState.Modified;
-
-            try
+            var resultado = await _razaDAO.ActualizarAsync(raza);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!RazaExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound("No se pudo actualizar o no se encontró la raza");
             }
 
             return NoContent();
         }
 
         // POST: api/Razas
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Raza>> PostRaza(Raza raza)
         {
-            _context.Razas.Add(raza);
-            await _context.SaveChangesAsync();
+            int nuevoId = await _razaDAO.InsertarAsync(raza);
+            raza.IdRaza = nuevoId;
 
             return CreatedAtAction("GetRaza", new { id = raza.IdRaza }, raza);
         }
@@ -88,21 +69,13 @@ namespace VeterinariaGenesis.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteRaza(int id)
         {
-            var raza = await _context.Razas.FindAsync(id);
-            if (raza == null)
+            var resultado = await _razaDAO.EliminarAsync(id);
+            if (!resultado)
             {
-                return NotFound();
+                return NotFound("No se pudo eliminar o no se encontró la raza");
             }
 
-            _context.Razas.Remove(raza);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool RazaExists(int id)
-        {
-            return _context.Razas.Any(e => e.IdRaza == id);
         }
     }
 }

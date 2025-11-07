@@ -1,69 +1,54 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Veterinaria_Genesis_DB.Data;
-using Veterinaria_Genesis_DB.Models;
+using VeterinariaProyecto.Models;
+using VeterinariaProyecto.DAO;
 
-namespace VeterinariaGenesis.Controllers
+namespace VeterinariaProyecto.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class HistoriaClinicasController : ControllerBase
     {
-        private readonly VeterinariaContext _context;
+        private readonly HistoriaClinicaDAO _historiaClinicaDAO;
 
-        public HistoriaClinicasController(VeterinariaContext context)
+        public HistoriaClinicasController()
         {
-            _context = context;
+            _historiaClinicaDAO = new HistoriaClinicaDAO();
         }
 
         // GET: api/HistoriaClinicas
         [HttpGet]
         public async Task<ActionResult<IEnumerable<HistoriaClinica>>> GetHistoriaClinicas()
         {
-            return await _context.HistoriaClinicas
-                .Include(h => h.IdMascotaNavigation)
-                .Include(h => h.ProcedimientosMedicos)
-                .ToListAsync();
+            var historiasClinicas = await _historiaClinicaDAO.ObtenerTodosAsync();
+            return Ok(historiasClinicas);
         }
 
         // GET: api/HistoriaClinicas/5
         [HttpGet("{id}")]
         public async Task<ActionResult<HistoriaClinica>> GetHistoriaClinica(int id)
         {
-            var historiaClinica = await _context.HistoriaClinicas
-                .Include(h => h.IdMascotaNavigation)
-                .Include(h => h.ProcedimientosMedicos)
-                .FirstOrDefaultAsync(h => h.IdHistoria == id);
+            var historiaClinica = await _historiaClinicaDAO.ObtenerPorIdAsync(id);
 
             if (historiaClinica == null)
             {
                 return NotFound();
             }
 
-            return historiaClinica;
+            return Ok(historiaClinica);
         }
 
-        // GET: api/HistoriaClinicas/ByMascota/5
-        [HttpGet("ByMascota/{idMascota}")]
-        public async Task<ActionResult<HistoriaClinica>> GetHistoriaClinicaByMascota(int idMascota)
+        // GET: api/HistoriaClinicas/mascota/5
+        [HttpGet("mascota/{idMascota}")]
+        public async Task<ActionResult<HistoriaClinica>> GetHistoriaClinicaPorMascota(int idMascota)
         {
-            var historiaClinica = await _context.HistoriaClinicas
-                .Include(h => h.IdMascotaNavigation)
-                .Include(h => h.ProcedimientosMedicos)
-                    .ThenInclude(p => p.IdVeterinarioNavigation)
-                .FirstOrDefaultAsync(h => h.IdMascota == idMascota);
+            var historiaClinica = await _historiaClinicaDAO.ObtenerPorMascotaAsync(idMascota);
 
             if (historiaClinica == null)
             {
                 return NotFound();
             }
 
-            return historiaClinica;
+            return Ok(historiaClinica);
         }
 
         // PUT: api/HistoriaClinicas/5
@@ -72,25 +57,13 @@ namespace VeterinariaGenesis.Controllers
         {
             if (id != historiaClinica.IdHistoria)
             {
-                return BadRequest();
+                return BadRequest("El ID de la URL no coincide con el ID del objeto");
             }
 
-            _context.Entry(historiaClinica).State = EntityState.Modified;
-
-            try
+            var resultado = await _historiaClinicaDAO.ActualizarAsync(historiaClinica);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!HistoriaClinicaExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound("No se pudo actualizar o no se encontró la historia clínica");
             }
 
             return NoContent();
@@ -100,8 +73,8 @@ namespace VeterinariaGenesis.Controllers
         [HttpPost]
         public async Task<ActionResult<HistoriaClinica>> PostHistoriaClinica(HistoriaClinica historiaClinica)
         {
-            _context.HistoriaClinicas.Add(historiaClinica);
-            await _context.SaveChangesAsync();
+            int nuevoId = await _historiaClinicaDAO.InsertarAsync(historiaClinica);
+            historiaClinica.IdHistoria = nuevoId;
 
             return CreatedAtAction("GetHistoriaClinica", new { id = historiaClinica.IdHistoria }, historiaClinica);
         }
@@ -110,21 +83,13 @@ namespace VeterinariaGenesis.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteHistoriaClinica(int id)
         {
-            var historiaClinica = await _context.HistoriaClinicas.FindAsync(id);
-            if (historiaClinica == null)
+            var resultado = await _historiaClinicaDAO.EliminarAsync(id);
+            if (!resultado)
             {
-                return NotFound();
+                return NotFound("No se pudo eliminar o no se encontró la historia clínica");
             }
 
-            _context.HistoriaClinicas.Remove(historiaClinica);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool HistoriaClinicaExists(int id)
-        {
-            return _context.HistoriaClinicas.Any(e => e.IdHistoria == id);
         }
     }
 }

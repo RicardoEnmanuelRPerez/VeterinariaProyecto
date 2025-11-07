@@ -1,85 +1,66 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Veterinaria_Genesis_DB.Data;
-using Veterinaria_Genesis_DB.Models;
+﻿using Microsoft.AspNetCore.Mvc;
+using VeterinariaProyecto.Models;
+using VeterinariaProyecto.DAO;
 
-namespace VeterinariaGenesis.Controllers
+namespace VeterinariaProyecto.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class MascotasController : ControllerBase
     {
-        private readonly VeterinariaContext _context;
+        private readonly MascotaDAO _mascotaDAO;
 
-        public MascotasController(VeterinariaContext context)
+        public MascotasController()
         {
-            _context = context;
+            _mascotaDAO = new MascotaDAO();
         }
 
         // GET: api/Mascotas
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Mascota>>> GetMascota()
         {
-            return await _context.Mascota.ToListAsync();
+            var mascotas = await _mascotaDAO.ObtenerTodosAsync();
+            return Ok(mascotas);
         }
 
         // GET: api/Mascotas/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Mascota>> GetMascota(int id)
         {
-            var mascota = await _context.Mascota.FindAsync(id);
+            var mascota = await _mascotaDAO.ObtenerPorIdAsync(id);
 
             if (mascota == null)
             {
                 return NotFound();
             }
 
-            return mascota;
+            return Ok(mascota);
         }
 
         // PUT: api/Mascotas/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutMascota(int id, Mascota mascota)
         {
             if (id != mascota.IdMascota)
             {
-                return BadRequest();
+                return BadRequest("El ID de la URL no coincide con el ID del objeto");
             }
 
-            _context.Entry(mascota).State = EntityState.Modified;
-
-            try
+            var resultado = await _mascotaDAO.ActualizarAsync(mascota);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!MascotaExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound("No se pudo actualizar o no se encontró la mascota");
             }
 
             return NoContent();
         }
 
         // POST: api/Mascotas
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Mascota>> PostMascota(Mascota mascota)
         {
-            _context.Mascota.Add(mascota);
-            await _context.SaveChangesAsync();
+            int nuevoId = await _mascotaDAO.InsertarAsync(mascota);
+            mascota.IdMascota = nuevoId;
 
             return CreatedAtAction("GetMascota", new { id = mascota.IdMascota }, mascota);
         }
@@ -88,21 +69,13 @@ namespace VeterinariaGenesis.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteMascota(int id)
         {
-            var mascota = await _context.Mascota.FindAsync(id);
-            if (mascota == null)
+            var resultado = await _mascotaDAO.EliminarAsync(id);
+            if (!resultado)
             {
-                return NotFound();
+                return NotFound("No se pudo eliminar o no se encontró la mascota");
             }
 
-            _context.Mascota.Remove(mascota);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool MascotaExists(int id)
-        {
-            return _context.Mascota.Any(e => e.IdMascota == id);
         }
     }
 }

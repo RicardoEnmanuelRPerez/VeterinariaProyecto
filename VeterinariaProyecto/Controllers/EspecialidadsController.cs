@@ -1,85 +1,66 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Veterinaria_Genesis_DB.Data;
-using Veterinaria_Genesis_DB.Models;
+﻿using Microsoft.AspNetCore.Mvc;
+using VeterinariaProyecto.Models;
+using VeterinariaProyecto.DAO;
 
-namespace VeterinariaGenesis.Controllers
+namespace VeterinariaProyecto.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class EspecialidadsController : ControllerBase
     {
-        private readonly VeterinariaContext _context;
+        private readonly EspecialidadDAO _especialidadDAO;
 
-        public EspecialidadsController(VeterinariaContext context)
+        public EspecialidadsController()
         {
-            _context = context;
+            _especialidadDAO = new EspecialidadDAO();
         }
 
         // GET: api/Especialidads
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Especialidad>>> GetEspecialidads()
         {
-            return await _context.Especialidads.ToListAsync();
+            var especialidades = await _especialidadDAO.ObtenerTodosAsync();
+            return Ok(especialidades);
         }
 
         // GET: api/Especialidads/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Especialidad>> GetEspecialidad(int id)
         {
-            var especialidad = await _context.Especialidads.FindAsync(id);
+            var especialidad = await _especialidadDAO.ObtenerPorIdAsync(id);
 
             if (especialidad == null)
             {
                 return NotFound();
             }
 
-            return especialidad;
+            return Ok(especialidad);
         }
 
         // PUT: api/Especialidads/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutEspecialidad(int id, Especialidad especialidad)
         {
             if (id != especialidad.IdEspecialidad)
             {
-                return BadRequest();
+                return BadRequest("El ID de la URL no coincide con el ID del objeto");
             }
 
-            _context.Entry(especialidad).State = EntityState.Modified;
-
-            try
+            var resultado = await _especialidadDAO.ActualizarAsync(especialidad);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!EspecialidadExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound("No se pudo actualizar o no se encontró la especialidad");
             }
 
             return NoContent();
         }
 
         // POST: api/Especialidads
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Especialidad>> PostEspecialidad(Especialidad especialidad)
         {
-            _context.Especialidads.Add(especialidad);
-            await _context.SaveChangesAsync();
+            int nuevoId = await _especialidadDAO.InsertarAsync(especialidad);
+            especialidad.IdEspecialidad = nuevoId;
 
             return CreatedAtAction("GetEspecialidad", new { id = especialidad.IdEspecialidad }, especialidad);
         }
@@ -88,21 +69,13 @@ namespace VeterinariaGenesis.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteEspecialidad(int id)
         {
-            var especialidad = await _context.Especialidads.FindAsync(id);
-            if (especialidad == null)
+            var resultado = await _especialidadDAO.EliminarAsync(id);
+            if (!resultado)
             {
-                return NotFound();
+                return NotFound("No se pudo eliminar o no se encontró la especialidad");
             }
 
-            _context.Especialidads.Remove(especialidad);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool EspecialidadExists(int id)
-        {
-            return _context.Especialidads.Any(e => e.IdEspecialidad == id);
         }
     }
 }

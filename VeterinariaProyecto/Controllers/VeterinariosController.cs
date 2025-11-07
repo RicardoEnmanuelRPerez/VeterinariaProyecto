@@ -1,45 +1,40 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Veterinaria_Genesis_DB.Data;
-using Veterinaria_Genesis_DB.Models;
+using VeterinariaProyecto.Models;
+using VeterinariaProyecto.DAO;
 
-namespace VeterinariaGenesis.Controllers
+namespace VeterinariaProyecto.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class VeterinariosController : ControllerBase
     {
-        private readonly VeterinariaContext _context;
+        private readonly VeterinarioDAO _veterinarioDAO;
 
-        public VeterinariosController(VeterinariaContext context)
+        public VeterinariosController()
         {
-            _context = context;
+            _veterinarioDAO = new VeterinarioDAO();
         }
 
         // GET: api/Veterinarios
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Veterinario>>> GetVeterinarios()
         {
-            return await _context.Veterinarios.Where(v => v.Activo).ToListAsync();
+            var veterinarios = await _veterinarioDAO.ObtenerTodosAsync();
+            return Ok(veterinarios);
         }
 
         // GET: api/Veterinarios/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Veterinario>> GetVeterinario(int id)
         {
-            var veterinario = await _context.Veterinarios.FindAsync(id);
+            var veterinario = await _veterinarioDAO.ObtenerPorIdAsync(id);
 
             if (veterinario == null)
             {
                 return NotFound();
             }
 
-            return veterinario;
+            return Ok(veterinario);
         }
 
         // PUT: api/Veterinarios/5
@@ -48,25 +43,13 @@ namespace VeterinariaGenesis.Controllers
         {
             if (id != veterinario.IdVeterinario)
             {
-                return BadRequest();
+                return BadRequest("El ID de la URL no coincide con el ID del objeto");
             }
 
-            _context.Entry(veterinario).State = EntityState.Modified;
-
-            try
+            var resultado = await _veterinarioDAO.ActualizarAsync(veterinario);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!VeterinarioExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound("No se pudo actualizar o no se encontró el veterinario");
             }
 
             return NoContent();
@@ -76,8 +59,8 @@ namespace VeterinariaGenesis.Controllers
         [HttpPost]
         public async Task<ActionResult<Veterinario>> PostVeterinario(Veterinario veterinario)
         {
-            _context.Veterinarios.Add(veterinario);
-            await _context.SaveChangesAsync();
+            int nuevoId = await _veterinarioDAO.InsertarAsync(veterinario);
+            veterinario.IdVeterinario = nuevoId;
 
             return CreatedAtAction("GetVeterinario", new { id = veterinario.IdVeterinario }, veterinario);
         }
@@ -86,21 +69,13 @@ namespace VeterinariaGenesis.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteVeterinario(int id)
         {
-            var veterinario = await _context.Veterinarios.FindAsync(id);
-            if (veterinario == null)
+            var resultado = await _veterinarioDAO.EliminarAsync(id);
+            if (!resultado)
             {
-                return NotFound();
+                return NotFound("No se pudo eliminar o no se encontró el veterinario");
             }
 
-            veterinario.Activo = false;
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool VeterinarioExists(int id)
-        {
-            return _context.Veterinarios.Any(e => e.IdVeterinario == id);
         }
     }
 }

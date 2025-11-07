@@ -1,85 +1,66 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Veterinaria_Genesis_DB.Data;
-using Veterinaria_Genesis_DB.Models;
+﻿using Microsoft.AspNetCore.Mvc;
+using VeterinariaProyecto.Models;
+using VeterinariaProyecto.DAO;
 
-namespace VeterinariaGenesis.Controllers
+namespace VeterinariaProyecto.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class EspeciesController : ControllerBase
     {
-        private readonly VeterinariaContext _context;
+        private readonly EspecieDAO _especieDAO;
 
-        public EspeciesController(VeterinariaContext context)
+        public EspeciesController()
         {
-            _context = context;
+            _especieDAO = new EspecieDAO();
         }
 
         // GET: api/Especies
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Especie>>> GetEspecies()
         {
-            return await _context.Especies.ToListAsync();
+            var especies = await _especieDAO.ObtenerTodosAsync();
+            return Ok(especies);
         }
 
         // GET: api/Especies/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Especie>> GetEspecie(int id)
         {
-            var especie = await _context.Especies.FindAsync(id);
+            var especie = await _especieDAO.ObtenerPorIdAsync(id);
 
             if (especie == null)
             {
                 return NotFound();
             }
 
-            return especie;
+            return Ok(especie);
         }
 
         // PUT: api/Especies/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutEspecie(int id, Especie especie)
         {
             if (id != especie.IdEspecie)
             {
-                return BadRequest();
+                return BadRequest("El ID de la URL no coincide con el ID del objeto");
             }
 
-            _context.Entry(especie).State = EntityState.Modified;
-
-            try
+            var resultado = await _especieDAO.ActualizarAsync(especie);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!EspecieExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound("No se pudo actualizar o no se encontró la especie");
             }
 
             return NoContent();
         }
 
         // POST: api/Especies
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Especie>> PostEspecie(Especie especie)
         {
-            _context.Especies.Add(especie);
-            await _context.SaveChangesAsync();
+            int nuevoId = await _especieDAO.InsertarAsync(especie);
+            especie.IdEspecie = nuevoId;
 
             return CreatedAtAction("GetEspecie", new { id = especie.IdEspecie }, especie);
         }
@@ -88,21 +69,13 @@ namespace VeterinariaGenesis.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteEspecie(int id)
         {
-            var especie = await _context.Especies.FindAsync(id);
-            if (especie == null)
+            var resultado = await _especieDAO.EliminarAsync(id);
+            if (!resultado)
             {
-                return NotFound();
+                return NotFound("No se pudo eliminar o no se encontró la especie");
             }
 
-            _context.Especies.Remove(especie);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool EspecieExists(int id)
-        {
-            return _context.Especies.Any(e => e.IdEspecie == id);
         }
     }
 }

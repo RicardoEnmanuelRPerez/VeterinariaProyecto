@@ -1,85 +1,66 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Veterinaria_Genesis_DB.Data;
-using Veterinaria_Genesis_DB.Models;
+﻿using Microsoft.AspNetCore.Mvc;
+using VeterinariaProyecto.Models;
+using VeterinariaProyecto.DAO;
 
-namespace VeterinariaGenesis.Controllers
+namespace VeterinariaProyecto.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class ProductoesController : ControllerBase
     {
-        private readonly VeterinariaContext _context;
+        private readonly ProductoDAO _productoDAO;
 
-        public ProductoesController(VeterinariaContext context)
+        public ProductoesController()
         {
-            _context = context;
+            _productoDAO = new ProductoDAO();
         }
 
         // GET: api/Productoes
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Producto>>> GetProductos()
         {
-            return await _context.Productos.ToListAsync();
+            var productos = await _productoDAO.ObtenerTodosAsync();
+            return Ok(productos);
         }
 
         // GET: api/Productoes/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Producto>> GetProducto(int id)
         {
-            var producto = await _context.Productos.FindAsync(id);
+            var producto = await _productoDAO.ObtenerPorIdAsync(id);
 
             if (producto == null)
             {
                 return NotFound();
             }
 
-            return producto;
+            return Ok(producto);
         }
 
         // PUT: api/Productoes/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutProducto(int id, Producto producto)
         {
             if (id != producto.IdProducto)
             {
-                return BadRequest();
+                return BadRequest("El ID de la URL no coincide con el ID del objeto");
             }
 
-            _context.Entry(producto).State = EntityState.Modified;
-
-            try
+            var resultado = await _productoDAO.ActualizarAsync(producto);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ProductoExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound("No se pudo actualizar o no se encontró el producto");
             }
 
             return NoContent();
         }
 
         // POST: api/Productoes
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Producto>> PostProducto(Producto producto)
         {
-            _context.Productos.Add(producto);
-            await _context.SaveChangesAsync();
+            int nuevoId = await _productoDAO.InsertarAsync(producto);
+            producto.IdProducto = nuevoId;
 
             return CreatedAtAction("GetProducto", new { id = producto.IdProducto }, producto);
         }
@@ -88,21 +69,13 @@ namespace VeterinariaGenesis.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProducto(int id)
         {
-            var producto = await _context.Productos.FindAsync(id);
-            if (producto == null)
+            var resultado = await _productoDAO.EliminarAsync(id);
+            if (!resultado)
             {
-                return NotFound();
+                return NotFound("No se pudo eliminar o no se encontró el producto");
             }
 
-            _context.Productos.Remove(producto);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool ProductoExists(int id)
-        {
-            return _context.Productos.Any(e => e.IdProducto == id);
         }
     }
 }

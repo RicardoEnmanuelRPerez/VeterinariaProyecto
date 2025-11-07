@@ -1,85 +1,66 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Veterinaria_Genesis_DB.Data;
-using Veterinaria_Genesis_DB.Models;
+﻿using Microsoft.AspNetCore.Mvc;
+using VeterinariaProyecto.Models;
+using VeterinariaProyecto.DAO;
 
-namespace VeterinariaGenesis.Controllers
+namespace VeterinariaProyecto.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     public class EmpleadoesController : ControllerBase
     {
-        private readonly VeterinariaContext _context;
+        private readonly EmpleadoDAO _empleadoDAO;
 
-        public EmpleadoesController(VeterinariaContext context)
+        public EmpleadoesController()
         {
-            _context = context;
+            _empleadoDAO = new EmpleadoDAO();
         }
 
         // GET: api/Empleadoes
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Empleado>>> GetEmpleados()
         {
-            return await _context.Empleados.ToListAsync();
+            var empleados = await _empleadoDAO.ObtenerTodosAsync();
+            return Ok(empleados);
         }
 
         // GET: api/Empleadoes/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Empleado>> GetEmpleado(int id)
         {
-            var empleado = await _context.Empleados.FindAsync(id);
+            var empleado = await _empleadoDAO.ObtenerPorIdAsync(id);
 
             if (empleado == null)
             {
                 return NotFound();
             }
 
-            return empleado;
+            return Ok(empleado);
         }
 
         // PUT: api/Empleadoes/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutEmpleado(int id, Empleado empleado)
         {
             if (id != empleado.IdEmpleado)
             {
-                return BadRequest();
+                return BadRequest("El ID de la URL no coincide con el ID del objeto");
             }
 
-            _context.Entry(empleado).State = EntityState.Modified;
-
-            try
+            var resultado = await _empleadoDAO.ActualizarAsync(empleado);
+            if (!resultado)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!EmpleadoExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound("No se pudo actualizar o no se encontró el empleado");
             }
 
             return NoContent();
         }
 
         // POST: api/Empleadoes
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Empleado>> PostEmpleado(Empleado empleado)
         {
-            _context.Empleados.Add(empleado);
-            await _context.SaveChangesAsync();
+            int nuevoId = await _empleadoDAO.InsertarAsync(empleado);
+            empleado.IdEmpleado = nuevoId;
 
             return CreatedAtAction("GetEmpleado", new { id = empleado.IdEmpleado }, empleado);
         }
@@ -88,21 +69,13 @@ namespace VeterinariaGenesis.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteEmpleado(int id)
         {
-            var empleado = await _context.Empleados.FindAsync(id);
-            if (empleado == null)
+            var resultado = await _empleadoDAO.EliminarAsync(id);
+            if (!resultado)
             {
-                return NotFound();
+                return NotFound("No se pudo eliminar o no se encontró el empleado");
             }
 
-            _context.Empleados.Remove(empleado);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool EmpleadoExists(int id)
-        {
-            return _context.Empleados.Any(e => e.IdEmpleado == id);
         }
     }
 }
